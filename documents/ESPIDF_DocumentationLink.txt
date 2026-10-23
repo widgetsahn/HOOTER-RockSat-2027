@@ -1,3 +1,10 @@
 https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/index.html
 
 use the above link to read documentation of the ESP32-IDF Framework. 
+
+Core 0 is solely responsible for keeping time in IDF FreeRTOS.
+Therefore, anything that prevents Core 0 from incrementing the tick count, such as suspending the scheduler on Core 0,
+will cause the entire scheduler's timekeeping to lag behind.
+
+Users that require the use of the float type in an ISR routine 
+should refer to the CONFIG_FREERTOS_FPU_IN_ISR configuration option.
