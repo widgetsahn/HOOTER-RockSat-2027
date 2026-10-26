@@ -3,7 +3,7 @@
 // written by Mason Ahner 10/25/2026
 
 #include <cstring> //used for stringlength
-
+#include <string> //used to prepend /sdcard to the filepath
 #include "SD_Card.h" //header file for class definition
 
 // little helper function to check if its a valid file path
@@ -109,10 +109,48 @@ void SD_Card::disconnect()
     }
 }
 
-// TODO:
+
 bool SD_Card::makeFile(const char *path)
 {
-    return false;
+    //before we try making a file, lets check the following
+    //1. make sure that the SD card is ready
+    //2. make sure that a chunk file is not open
+    //3. make sure that the specified file path is a valid path name
+    if (!_ready || _file || !validPath(path))
+    {
+        return false;
+    }
+
+    //handle cases where the file path already exists
+    if(pathExists(path) || !_ready) //we could encounter a connection issue during pathexists
+    {
+        return false;
+    }
+
+    //prepend /sdcard to file path
+    const std::string prepended_path = std::string(MOUNT_POINT) + path;
+
+    //create empty file
+    std::FILE *file = std::fopen(prepended_path.c_str(), "wb"); 
+
+    //check to see if the file was sucessfully created
+    if (file == nullptr)
+    {
+        _ready = false;
+        return false;
+    }
+
+    //attempt to close the file and check if the file was sucessfully closed
+    const int close_result = std::fclose(file);
+
+    if (close_result != 0) //if the close result returned a non-zero value, the close attempt failed
+    {
+        _ready = false;
+        return false;
+    }
+
+    //up to this point, if we haven't failed any tests, its safe to say we managed to sucessfully created a file on the SD card
+    return true;
 }
 
 // TODO:
