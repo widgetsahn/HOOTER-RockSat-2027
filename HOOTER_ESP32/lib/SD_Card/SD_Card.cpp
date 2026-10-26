@@ -2,9 +2,11 @@
 
 // written by Mason Ahner 10/25/2026
 
-#include <cstring> //used for stringlength
-#include <string> //used to prepend /sdcard to the filepath
-#include "SD_Card.h" //header file for class definition
+#include <cstring>    //used for stringlength
+#include <string>     //used to prepend /sdcard to the filepath
+#include "SD_Card.h"  //header file for class definition
+#include <sys/stat.h> // used to look at the status of a file
+#include <unistd.h>   //used to check if a filepath is a file or folder
 
 // little helper function to check if its a valid file path
 static bool validPath(const char *path)
@@ -109,54 +111,97 @@ void SD_Card::disconnect()
     }
 }
 
-
 bool SD_Card::makeFile(const char *path)
 {
-    //before we try making a file, lets check the following
-    //1. make sure that the SD card is ready
-    //2. make sure that a chunk file is not open
-    //3. make sure that the specified file path is a valid path name
+    // before we try making a file, lets check the following
+    // 1. make sure that the SD card is ready
+    // 2. make sure that a chunk file is not open
+    // 3. make sure that the specified file path is a valid path name
     if (!_ready || _file || !validPath(path))
     {
         return false;
     }
 
-    //handle cases where the file path already exists
-    if(pathExists(path) || !_ready) //we could encounter a connection issue during pathexists
+    // handle cases where the file path already exists
+    if (pathExists(path) || !_ready) // we could encounter a connection issue during pathexists
     {
         return false;
     }
 
-    //prepend /sdcard to file path
+    // prepend /sdcard to file path
     const std::string prepended_path = std::string(MOUNT_POINT) + path;
 
-    //create empty file
-    std::FILE *file = std::fopen(prepended_path.c_str(), "wb"); 
+    // create empty file
+    std::FILE *file = std::fopen(prepended_path.c_str(), "wb");
 
-    //check to see if the file was sucessfully created
+    // check to see if the file was sucessfully created
     if (file == nullptr)
     {
         _ready = false;
         return false;
     }
 
-    //attempt to close the file and check if the file was sucessfully closed
+    // attempt to close the file and check if the file was sucessfully closed
     const int close_result = std::fclose(file);
 
-    if (close_result != 0) //if the close result returned a non-zero value, the close attempt failed
+    if (close_result != 0) // if the close result returned a non-zero value, the close attempt failed
     {
         _ready = false;
         return false;
     }
 
-    //up to this point, if we haven't failed any tests, its safe to say we managed to sucessfully created a file on the SD card
+    // up to this point, if we haven't failed any tests, its safe to say we managed to sucessfully created a file on the SD card
     return true;
 }
 
-// TODO:
 bool SD_Card::deleteFile(const char *path)
 {
-    return false;
+    // check the following
+    // 1. Make sure the SD card is ready
+    // 2. Make sure we aren't chunk streaming
+    // 3. Make sure the provided file path is a valid path
+    if (!_ready || _file || !validPath(path))
+    {
+        return false;
+    }
+
+    // check to see if the path exists or if the existence check failed
+    if (!pathExists(path) || !_ready)
+    {
+        return false;
+    }
+
+    // prepend the filesystem mount point to the file path
+    const std::string prepend_path = std::string(MOUNT_POINT) + path;
+
+    // get the info of this file path
+    struct stat file_info = {};
+
+    // check to see if we obtained the file info
+    if (stat(prepend_path.c_str(), &file_info))
+    {
+        _ready = false;
+        return false;
+    }
+
+    // check to see if the file is a directory
+    if (!S_ISREG(file_info.st_mode))
+    {
+        printf("SD_Card.deleteFile(const char *path): attempted to delete file directory!");
+        return false;
+    }
+
+    // Okay if the file isn't a directory, lets try and delete it!
+    if (unlink(prepend_path.c_str()) != 0)
+    {
+        //if unlink failed we screwed up
+        _ready = false;
+        return false;
+    }
+
+
+    //if we passed all of our tests, lets return true :D
+    return true;
 }
 
 // TODO:
