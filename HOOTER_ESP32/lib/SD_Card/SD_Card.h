@@ -49,7 +49,7 @@ public:
 
     uint64_t used_storage(); // returns the ammount of used storage in bytes
 
-    bool checkCommunication(); //sends a fresh status command to the card. returns true if status is OK
+    bool checkCommunication(); // sends a fresh status command to the card. returns true if status is OK
 
 private:
     bool _ready = false; // a status bit that confirms permission to proceed with SD card operations
@@ -57,35 +57,34 @@ private:
     sdmmc_card_t *_card = nullptr; // card information for esp_vfs_fat_sdmmc_mount()
     // used to run card operations and mounting/unmounting
 
-    std::FILE* _file = nullptr; //standard C file stream. This file is used for chunk/buffer streaming data when writing photos to the SD card
+    std::FILE *_file = nullptr; // standard C file stream. This file is used for chunk/buffer streaming data when writing photos to the SD card
 
+    // okay below are some hardware/firmware peripherials that must be set in order to implent ESP IDF's SDmmc API features
 
-    //okay below are some hardware/firmware peripherials that must be set in order to implent ESP IDF's SDmmc API features
-
-    static constexpr const char* MOUNT_POINT = "/sdcard"; //used to append to SD file system API
-    //for example if you were to write to /data.csv, we will PREpend (not append) to the front of the filepath to be named
+    static constexpr const char *MOUNT_POINT = "/sdcard"; // used to append to SD file system API
+    // for example if you were to write to /data.csv, we will PREpend (not append) to the front of the filepath to be named
     //"/sdcard/data.csv"
 
-    //ESP32 has two hardware interfaces, Slot 0 and Slot 1
-    //slot 0 doesn't work for us because some of the GPIO pins reserved for slot 0
-    //are also used for thee modules flash-memory interface. I don't wanna deal with that LMAO
+    // ESP32 has two hardware interfaces, Slot 0 and Slot 1
+    // slot 0 doesn't work for us because some of the GPIO pins reserved for slot 0
+    // are also used for thee modules flash-memory interface. I don't wanna deal with that LMAO
 
-    static constexpr int SDMMC_SLOT = SDMMC_HOST_SLOT_1; //yes please lets use slot 1 lmao
+    static constexpr int SDMMC_SLOT = SDMMC_HOST_SLOT_1; // yes please lets use slot 1 lmao
 
-    //we can either use 1 bit or 4 bit per clock when writing to SD card, lets use 1 per clock, then change this to 4 and see if we can notice the difference
-    //in write speed :P
-    static constexpr int BUS_WIDTH = 1; //lets use one bit for now but in our implementation have the flexibility for 4 bits
+    // we can either use 1 bit or 4 bit per clock when writing to SD card, lets use 1 per clock, then change this to 4 and see if we can notice the difference
+    // in write speed :P
+    static constexpr int BUS_WIDTH = 1; // lets use one bit for now but in our implementation have the flexibility for 4 bits
 
-    //below are the pins used for SLOT1 SDMMC hardware interfacing
+    //sdmmc can have multiple files to be open simultaneously, i will set this such that you can configure the max here
+    static constexpr int MAX_FILES = 5;
+
+    // below are the pins used for SLOT1 SDMMC hardware interfacing
     static constexpr gpio_num_t CMD_PIN = GPIO_NUM_15;
     static constexpr gpio_num_t CLK_PIN = GPIO_NUM_14;
     static constexpr gpio_num_t D0_PIN = GPIO_NUM_2;
     static constexpr gpio_num_t D1_PIN = GPIO_NUM_4;
     static constexpr gpio_num_t D2_PIN = GPIO_NUM_12;
     static constexpr gpio_num_t D3_PIN = GPIO_NUM_13;
-
-
-
 };
 
 #endif // SD_CARD_H
