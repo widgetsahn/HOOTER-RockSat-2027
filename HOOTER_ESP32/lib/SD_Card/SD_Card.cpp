@@ -16,7 +16,6 @@ static bool validPath(const char *path)
 }
 
 // Initialize SDMMC and connect to SD card host
-// TODO:
 bool SD_Card::connect()
 {
     // first, whenever we connect, we should disconnect the SD_Card and then try to re-connect
@@ -73,9 +72,41 @@ bool SD_Card::connect()
     return true;
 }
 
-// TODO:
 void SD_Card::disconnect()
 {
+    // prevent SD card operations
+    _ready = false;
+
+    // check to see if a file is open for chunk streaming
+    if (_file != nullptr)
+    {
+        const int close_result = std::fclose(_file); // try to close file and record its result
+
+        // check to see if the close was sucessful
+        if (close_result != 0)
+        {
+            printf("SD_Card.disconnect(): Failed fclose\n");
+        }
+
+        // regardless if the close was sucessful, we need to set _file to nullptr
+        _file = nullptr;
+    }
+    // now lets check to see if a card has been mounted
+    if (_card != nullptr)
+    {
+        const esp_err_t unmount_result = esp_vfs_fat_sdcard_unmount(MOUNT_POINT, _card); // run a dismount of the SD card
+
+        // check to see if the unmount was sucessful
+        if (unmount_result != ESP_OK)
+        {
+            // if the unmount was unsucessful, we need to end here
+            printf("SD_Card.disconnect(): Failed esp_vfs_fat_sd_unmount\n");
+            return;
+        }
+
+        // if the unmount suceeded, the card pointer is no longer needed
+        _card = nullptr;
+    }
 }
 
 // TODO:
