@@ -5,8 +5,8 @@
 #include <cstring>    //used for stringlength
 #include <string>     //used to prepend /sdcard to the filepath
 #include "SD_Card.h"  //header file for class definition
-#include <sys/stat.h> // used to look at the status of a file
-#include <unistd.h>   //used to check if a filepath is a file or folder
+#include <sys/stat.h> // used to look at the status of a file and run file-type checks
+#include <cerrno>     //used to help distinguish between a missing path and a filesystem error
 
 // little helper function to check if its a valid file path
 static bool validPath(const char *path)
@@ -187,33 +187,128 @@ bool SD_Card::deleteFile(const char *path)
     // check to see if the file is a directory
     if (!S_ISREG(file_info.st_mode))
     {
-        printf("SD_Card.deleteFile(const char *path): attempted to delete file directory!");
+        printf("SD_Card.deleteFile(const char *path): Path is not a regular file!\n");
         return false;
     }
 
     // Okay if the file isn't a directory, lets try and delete it!
-    if (unlink(prepend_path.c_str()) != 0)
+    if (std::remove(prepend_path.c_str()) != 0)
     {
-        //if unlink failed we screwed up
+        // if file deletion failed we screwed up
         _ready = false;
         return false;
     }
 
-
-    //if we passed all of our tests, lets return true :D
+    // if we passed all of our tests, lets return true :D
     return true;
 }
 
-// TODO:
 bool SD_Card::pathExists(const char *path)
 {
+    // first, lets see if we are ready and that its a valid path.
+    if (!_ready || !validPath(path))
+    {
+        return false;
+    }
+
+    // prepend "/sdcard" to the supplied path
+    const std::string prepended_path = std::string(MOUNT_POINT) + path;
+
+    // get the information about the path
+    struct stat file_info = {};
+
+    // check to see if a file or directory exists at this path
+    if (stat(prepended_path.c_str(), &file_info) == 0)
+    {
+        // if a file/directory exists at this path, we know that the path exists!
+        return true;
+    }
+
+    // if a file/directory doesnt exist, check to the error indicator to see its because we explicitly looked for the path and couldn't find it
+    if (errno == ENOENT)
+    {
+        return false;
+    }
+
+    // any other possible errors would indicate a communication or filesystem failure
+    _ready = false;
     return false;
 }
 
 // TODO:
 bool SD_Card::writeFile(const char *path, const char *text)
 {
-    return false;
+    // before we try anything we must validate the following
+    // 1. the SD card is ready to write
+    // 2. we aren't chunk writing to a file
+    // 3. the path provided exists
+    // 4. the text isnt null lol
+    if (_file || !pathExists(path) || text == nullptr || !_ready)
+    {
+        return false;
+    }
+
+    //prepend the file
+    const std::string prepended_path = std::string(MOUNT_POINT) + path;
+
+    //get info about the file path
+    struct stat file_info = {};
+
+    //if we could not retrieve statistics about the file path, set _ready = false and return false
+    if (stat(prepended_path.c_str(), &file_info))
+    {
+        _ready = false;
+        return false;
+    }
+
+    //check to see if the filepath was refering to a regular file (if not return false)
+    if (!S_ISREG(file_info.st_mode))
+    {
+        return false;
+    }
+
+    //if the file exists, and we could confirm that the file path is for a regular file, we can attempt to write
+
+    //open the file for writing
+    std::FILE *file = std::fopen(prepended_path.c_str(), "wb");
+
+    //check to see if file open was sucessful
+    if (file == nullptr)
+    {
+        _ready = false;
+        return false;
+    }
+
+    //lets look at the ammount of bytes of text that will be written to the SD card
+    const size_t length = std::strlen(text);
+
+    //write to the file and get the number of bytes written
+    const size_t written = std::fwrite(text, 1, length, file);
+
+    //attempt to close the file
+    const int close_result = std::fclose(file);
+
+    //check to see if close was sucessful
+    if (close_result)
+    {
+        _ready = false;
+        printf("SD_Card.writeFile(): File close attempt fail!");
+        return false;
+    }
+
+    //check to see if the write was sucessful
+
+    if (written != length)
+    {
+        _ready = false;
+        printf("SD_Card.writeFile(): File bytes written != # of bytes sent to writeFile");
+        return false;
+    }
+
+    //if we sucessfully wrote the correct amount of bytes to the file AND we sucessfully closed it,
+    //we can concur that our writeFile() was sucessful!
+
+    return true;
 }
 
 // TODO:
