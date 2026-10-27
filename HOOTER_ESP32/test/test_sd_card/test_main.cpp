@@ -20,6 +20,8 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 
+//TODO: implement  printf() status updates during tests.
+
 namespace
 {
     constexpr gpio_num_t LED = GPIO_NUM_25;

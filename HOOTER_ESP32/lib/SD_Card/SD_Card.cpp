@@ -8,6 +8,9 @@
 #include <sys/stat.h> // used to look at the status of a file and run file-type checks
 #include <cerrno>     //used to help distinguish between a missing path and a filesystem error
 
+
+//TODO: Add printf() statements for all return instances
+
 // little helper function to check if its a valid file path
 static bool validPath(const char *path)
 {
