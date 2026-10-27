@@ -26,6 +26,7 @@ bool SD_Card::connect()
     // check to make sure _file and _card resources are inactive
     if (_card != nullptr || _file != nullptr)
     {
+        printf("SD_Card.connect(): _card or _file resources are active!\n");
         return false;
     }
 
@@ -59,6 +60,7 @@ bool SD_Card::connect()
     // upon attempting this connection, we can check mount_result to see if it was sucessful
     if (mount_result != ESP_OK) // if its not ok, then we screwed up cuh
     {
+        printf("SD_Card.connect(): mount_result != ESP_OK \n");
         return false;
     }
 
@@ -66,6 +68,7 @@ bool SD_Card::connect()
     if (status_result != ESP_OK)
     {
         disconnect();
+        printf("SD_Card.connect(): SD_Card status not ESP_OK!\n");
         return false;
     }
 
@@ -79,20 +82,9 @@ void SD_Card::disconnect()
     // prevent SD card operations
     _ready = false;
 
-    // check to see if a file is open for chunk streaming
-    if (_file != nullptr)
-    {
-        const int close_result = std::fclose(_file); // try to close file and record its result
+    // attempt to close any files for chunk streaming
+    closeFile();
 
-        // check to see if the close was sucessful
-        if (close_result != 0)
-        {
-            printf("SD_Card.disconnect(): Failed fclose\n");
-        }
-
-        // regardless if the close was sucessful, we need to set _file to nullptr
-        _file = nullptr;
-    }
     // now lets check to see if a card has been mounted
     if (_card != nullptr)
     {
@@ -235,7 +227,7 @@ bool SD_Card::pathExists(const char *path)
     return false;
 }
 
-// TODO:
+
 bool SD_Card::writeFile(const char *path, const char *text)
 {
     // before we try anything we must validate the following
@@ -248,47 +240,47 @@ bool SD_Card::writeFile(const char *path, const char *text)
         return false;
     }
 
-    //prepend the file
+    // prepend the file
     const std::string prepended_path = std::string(MOUNT_POINT) + path;
 
-    //get info about the file path
+    // get info about the file path
     struct stat file_info = {};
 
-    //if we could not retrieve statistics about the file path, set _ready = false and return false
+    // if we could not retrieve statistics about the file path, set _ready = false and return false
     if (stat(prepended_path.c_str(), &file_info))
     {
         _ready = false;
         return false;
     }
 
-    //check to see if the filepath was refering to a regular file (if not return false)
+    // check to see if the filepath was refering to a regular file (if not return false)
     if (!S_ISREG(file_info.st_mode))
     {
         return false;
     }
 
-    //if the file exists, and we could confirm that the file path is for a regular file, we can attempt to write
+    // if the file exists, and we could confirm that the file path is for a regular file, we can attempt to write
 
-    //open the file for writing
+    // open the file for writing
     std::FILE *file = std::fopen(prepended_path.c_str(), "wb");
 
-    //check to see if file open was sucessful
+    // check to see if file open was sucessful
     if (file == nullptr)
     {
         _ready = false;
         return false;
     }
 
-    //lets look at the ammount of bytes of text that will be written to the SD card
+    // lets look at the ammount of bytes of text that will be written to the SD card
     const size_t length = std::strlen(text);
 
-    //write to the file and get the number of bytes written
+    // write to the file and get the number of bytes written
     const size_t written = std::fwrite(text, 1, length, file);
 
-    //attempt to close the file
+    // attempt to close the file
     const int close_result = std::fclose(file);
 
-    //check to see if close was sucessful
+    // check to see if close was sucessful
     if (close_result)
     {
         _ready = false;
@@ -296,7 +288,7 @@ bool SD_Card::writeFile(const char *path, const char *text)
         return false;
     }
 
-    //check to see if the write was sucessful
+    // check to see if the write was sucessful
 
     if (written != length)
     {
@@ -305,49 +297,235 @@ bool SD_Card::writeFile(const char *path, const char *text)
         return false;
     }
 
-    //if we sucessfully wrote the correct amount of bytes to the file AND we sucessfully closed it,
-    //we can concur that our writeFile() was sucessful!
+    // if we sucessfully wrote the correct amount of bytes to the file AND we sucessfully closed it,
+    // we can concur that our writeFile() was sucessful!
 
     return true;
 }
 
-// TODO:
+
 bool SD_Card::appendFile(const char *path, const char *text)
 {
-    return false;
-}
-
-// TODO:
-bool SD_Card::openFile(const char *path, bool append)
-{
-    return false;
-}
-
-// TODO:
-uint16_t SD_Card::writeChunk(const uint8_t *buffer, uint16_t buffer_size)
-{
-    return 0;
-}
-
-// TODO:
-void SD_Card::closeFile()
-{
-}
-
-// TODO:
-uint64_t SD_Card::used_storage()
-{
-    return 0;
-}
-
-// TODO:
-bool SD_Card::checkCommunication()
-{
-    // first we know that if the SD card hasn't been initialized, we can already just return false
-    if (!_ready)
+    // before we try anything we must validate the following
+    // 1. the SD card is ready to write
+    // 2. we aren't chunk writing to a file
+    // 3. the path provided exists
+    // 4. the text isnt null lol
+    if (_file || !pathExists(path) || text == nullptr || !_ready)
     {
         return false;
     }
-    _ready = false;
-    return _ready;
+
+    // prepend the file
+    const std::string prepended_path = std::string(MOUNT_POINT) + path;
+
+    // get info about the file path
+    struct stat file_info = {};
+
+    // if we could not retrieve statistics about the file path, set _ready = false and return false
+    if (stat(prepended_path.c_str(), &file_info))
+    {
+        _ready = false;
+        return false;
+    }
+
+    // check to see if the filepath was refering to a regular file (if not return false)
+    if (!S_ISREG(file_info.st_mode))
+    {
+        return false;
+    }
+
+    // if the file exists, and we could confirm that the file path is for a regular file, we can attempt to write
+
+    // open the file for appending
+    std::FILE *file = std::fopen(prepended_path.c_str(), "ab");
+
+    // check to see if file open was sucessful
+    if (file == nullptr)
+    {
+        _ready = false;
+        return false;
+    }
+
+    // lets look at the ammount of bytes of text that will be written to the SD card
+    const size_t length = std::strlen(text);
+
+    // write to the file and get the number of bytes written
+    const size_t written = std::fwrite(text, 1, length, file);
+
+    // attempt to close the file
+    const int close_result = std::fclose(file);
+
+    // check to see if close was sucessful
+    if (close_result)
+    {
+        _ready = false;
+        printf("SD_Card.appendFile(): File close attempt fail!");
+        return false;
+    }
+
+    // check to see if the write was sucessful
+
+    if (written != length)
+    {
+        _ready = false;
+        printf("SD_Card.appendFile(): File bytes written != # of bytes sent to appendFile");
+        return false;
+    }
+
+    // if we sucessfully wrote the correct amount of bytes to the file AND we sucessfully closed it,
+    // we can concur that our writeFile() was sucessful!
+
+    return true;
+}
+
+
+bool SD_Card::openFile(const char *path, bool append)
+{
+    // make sure the following is true
+    // 1. we don't already have an open file
+    // 2. the path exists
+    // 3. we are ready to interact with the SD card
+
+    if (_file || !pathExists(path) || !_ready)
+    {
+        return false;
+    }
+
+    // prepend the filesystem mount point
+    const std::string prepended_path = std::string(MOUNT_POINT) + path;
+
+    // get information about the file
+    struct stat file_info = {};
+
+    // check to see if we could access the file information, if we couldn't then we know we had a communication problem
+    if (stat(prepended_path.c_str(), &file_info))
+    {
+        _ready = false;
+        return false;
+    }
+
+    // make sure that its a regular file
+    if (!S_ISREG(file_info.st_mode))
+    {
+        return false;
+    }
+
+    // check to see if we are writing in append mode or not
+    if (append)
+    {
+        _file = std::fopen(prepended_path.c_str(), "ab"); // append
+    }
+    else
+    {
+        _file = std::fopen(prepended_path.c_str(), "wb"); // overwrite
+    }
+
+    if (_file == nullptr)
+    {
+        _ready = false;
+        return false;
+    }
+
+    // if we managed to open the file, we are all good!
+    return true;
+}
+
+
+uint16_t SD_Card::writeChunk(const uint8_t *buffer, uint16_t buffer_size)
+{
+    // confirm the following
+    // SD_Card object is ready
+    //_file is selected
+    // the buffer is specified (not null)
+    // the buffer_size is nonzero
+    if (!_ready || _file == nullptr || buffer == nullptr || buffer_size == 0)
+    {
+        return 0;
+    }
+
+    // write bytes
+    const size_t written = std::fwrite(buffer, 1, buffer_size, _file);
+
+    // look if we sucessfully wrote the same ammount of bytes as the buffer size
+    if (written != buffer_size)
+    {
+        _ready = false;
+        std::printf("SD_Card.writeChunk(): incomplete write!\n");
+    }
+
+    return static_cast<uint16_t>(written); // typecast written bytes
+}
+
+
+void SD_Card::closeFile()
+{
+    // if there is no chunk-streaming file open, there is nothing to try and close
+    if (_file == nullptr)
+    {
+        printf("SD_Card.closeFile(): no chunk stream file is open!\n");
+        return;
+    }
+
+    // attempt to close file
+    const int close_result = std::fclose(_file);
+
+    // if the close result is not good, that not good!
+    if (close_result != 0)
+    {
+        _ready = false;
+        std::printf("SD_Card.closeFile(): file close failed!\n");
+    }
+
+    // regardless, lets set the file as invalid
+    _file = nullptr;
+}
+
+
+uint64_t SD_Card::used_storage()
+{
+    // we should only look into storage space if we are securely connected to the SD card lol
+    if (!_ready)
+    {
+        printf("SD_Card.used_storage(): card not connected!\n");
+        return 0;
+    }
+    uint64_t total_bytes;
+    uint64_t free_bytes;
+
+    // get the info of the SD Card
+    const esp_err_t result = esp_vfs_fat_info(MOUNT_POINT, &total_bytes, &free_bytes);
+
+    // if we somehow failed to get the info from SD card thats bad!
+    if (result != ESP_OK)
+    {
+        _ready = false;
+        std::printf("SD_Card.used_storage(): Storage query failed!\n");
+        return 0;
+    }
+
+    return total_bytes - free_bytes;
+}
+
+bool SD_Card::checkCommunication()
+{
+    // first we know that if the SD card hasn't been initialized, we can already just return false
+    if (_card == nullptr)
+    {
+        _ready = false;
+        return false;
+    }
+
+    //request SD card status
+    const esp_err_t status = sdmmc_get_status(_card);
+    
+    if (status != ESP_OK)
+    {
+        _ready = false;
+        printf("SD_Card.checkCommunication(): Status Check failed!\n");
+        return false;
+    }
+
+    //if its okay then the SD card is communicating
+    return true;
 }

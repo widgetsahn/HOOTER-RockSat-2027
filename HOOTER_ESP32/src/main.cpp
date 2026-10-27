@@ -52,12 +52,14 @@ void helloTask(void *parameter)
         printf("Hello, world! RockSat2027 Rules!\n");
         printf("Salvatore t\n");
         printf("Simmmmmmm t\n");
+        printf("Mason From another PC!\n");
         //here is a neat trick to see how much RAM was used
         printf("Minimum unused stack for helloTask: %u bytes\n", (unsigned)uxTaskGetStackHighWaterMark(nullptr));
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
+#ifndef PIO_UNIT_TESTING //used to establish that we are actually running main and not a test
 extern "C" void app_main(void)
 {
     //now that we wrote our freeRTOS tasks, we can dedicate our tasks! :) pretty cool right?
@@ -80,3 +82,4 @@ extern "C" void app_main(void)
     //lets do the samee thing 
     xTaskCreate(helloTask, "Hello", 2048, nullptr, 1, nullptr);
 }
+#endif
