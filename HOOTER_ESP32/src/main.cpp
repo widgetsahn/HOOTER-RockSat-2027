@@ -58,6 +58,7 @@ void helloTask(void *parameter)
     }
 }
 
+#ifndef PIO_UNIT_TESTING //used to establish that we are actually running main and not a test
 extern "C" void app_main(void)
 {
     //now that we wrote our freeRTOS tasks, we can dedicate our tasks! :) pretty cool right?
@@ -80,3 +81,4 @@ extern "C" void app_main(void)
     //lets do the samee thing 
     xTaskCreate(helloTask, "Hello", 2048, nullptr, 1, nullptr);
 }
+#endif
