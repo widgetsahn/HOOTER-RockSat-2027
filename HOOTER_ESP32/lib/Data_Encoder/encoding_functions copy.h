@@ -35,7 +35,7 @@ public:
     int encode_convolutional(float rate, int constraint_length, const unsigned int* in_bits, unsigned int* out_bits, unsigned long out_cap_bits);
 
     // --- Burst Error Codes ---
-    int encode_reed_solomon(const uint8_t* in, size_t len, unsigned int* out, int interleave = 1);
+    int encode_reed_solomon(const unsigned int* in, size_t len, unsigned int* out, int interleave = 1);
     
     // --- The Spaceflight Standards (CCSDS) ---
     void encode_concatenated(); // RS (Outer) + Convolutional (Inner)
