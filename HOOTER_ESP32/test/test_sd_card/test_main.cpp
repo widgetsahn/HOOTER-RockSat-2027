@@ -2,7 +2,8 @@
 // ESP-IDF / PlatformIO on-device SD_Card integration tests.
 // Put this file in tests/test_sd_card/test_main.cpp.
 // SD_Card.cpp stays in src/ and SD_Card.h in include/.
-// Runs once per reset in one dedicated FreeRTOS task. No Serial API.
+// Runs once per reset in one dedicated FreeRTOS task.
+// Live serial progress uses printf(); no Arduino Serial dependency.
 // Reports: /sdcard/SD_Card_tests/runNNNN/results.csv
 // Existing runs are preserved. Only fixtures inside the new run are modified.
 // GPIO25: optional external LED, active HIGH. ON=all passed and report saved.
@@ -20,7 +21,7 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 
-//TODO: implement  printf() status updates during tests.
+// Live results are printed immediately; Unity assertions follow cleanup.
 
 namespace
 {
@@ -40,6 +41,9 @@ namespace
 
     void check(const char *name, bool pass)
     {
+        std::printf("[SD TEST %03u] %s: %s\n",
+                    static_cast<unsigned>(count + 1), pass ? "PASS" : "FAIL", name);
+        std::fflush(stdout);
         if (count < sizeof(results) / sizeof(results[0]))
             results[count++] = {name, pass};
         else
@@ -248,6 +252,13 @@ namespace
                 verified = false;
         }
         check("64KiB byte for byte readback", verified);
+        std::printf("64 KiB write plus close: %lld us; write counts=%s; readback=%s\n",
+                    static_cast<long long>(write_us), full ? "OK" : "FAILED",
+                    verified ? "OK" : "FAILED");
+        if (full && verified && write_us > 0) {
+            std::printf("Measured rate: %.3f MB/s (small functional test)\n",
+                        65536.0 / static_cast<double>(write_us));
+        }
         uint64_t total = 0, free = 0;
         const esp_err_t info = esp_vfs_fat_info(ROOT, &total, &free);
         const uint64_t used = card.used_storage();
@@ -299,6 +310,9 @@ namespace
         gpio_set_direction(LED, GPIO_MODE_OUTPUT);
         gpio_set_level(LED, 0);
         UNITY_BEGIN();
+        std::printf("\n=== SD card tests starting ===\n");
+        std::printf("Connecting to SD card...\n");
+        std::fflush(stdout);
         const bool initial = card.connect();
         check("initial connect", initial);
         bool connected = initial;
@@ -307,7 +321,20 @@ namespace
             connected = card.connect();
             check("initial connect retry", connected);
         }
-        const bool prepared = connected && prepareRun() && saveReport(false);
+        bool prepared = false;
+        if (connected) {
+            std::printf("Creating a new test directory...\n");
+            if (prepareRun()) {
+                std::printf("Report: %s/results.csv\n", raw(run).c_str());
+                prepared = saveReport(false);
+                if (!prepared) std::printf("ERROR: Could not save initial CSV report.\n");
+            } else {
+                std::printf("ERROR: Could not create test directory (errno=%d).\n", errno);
+            }
+        } else {
+            std::printf("ERROR: Card connection failed twice; tests cannot proceed.\n");
+        }
+        std::fflush(stdout);
         bool complete = false;
         if (prepared)
         {
@@ -323,18 +350,27 @@ namespace
         for (size_t i = 0; i < count; ++i)
             if (!results[i].pass)
                 failed = true;
+        unsigned passed = 0;
+        for (size_t i = 0; i < count; ++i) if (results[i].pass) ++passed;
+        std::printf("\n=== SD checks: %u passed / %u failed ===\n",
+                    passed, static_cast<unsigned>(count) - passed);
+        std::printf("CSV report: %s; overall: %s\n",
+                    complete ? "SAVED" : "NOT COMPLETED", failed ? "FAIL" : "PASS");
+        std::fflush(stdout);
         // Steady HIGH indicates the report completed and all recorded tests passed.
         gpio_set_level(LED, complete && !failed ? 1 : 0);
         if (!prepared)
             RUN_TEST(verifySetup);
         for (current_result = 0; current_result < count; ++current_result)
         {
-            RUN_TEST(verifyRecordedResult);
+            // Use each recorded condition as its Unity test name.
+            UnityDefaultTestRun(verifyRecordedResult, results[current_result].name, __LINE__);
         }
         RUN_TEST(verifyOverflow);
         if (prepared && !complete)
             RUN_TEST(verifyReport);
         UNITY_END();
+        std::fflush(stdout);
         vTaskDelete(nullptr);
     }
 }
