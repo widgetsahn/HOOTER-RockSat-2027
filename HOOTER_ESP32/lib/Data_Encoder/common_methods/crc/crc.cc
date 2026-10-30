@@ -6,11 +6,20 @@
 #include "esp_rom_crc.h" // we need the ESP32's built-in CRC function, but
 // only if we are compiling for the ESP32
 #endif
-
 // defining generator polynomial for CRC calculation x^16 + x^12 + x^5 + 1
 static constexpr uint16_t CRC16_POLY = 0x1021;
+// initial value for CRC calc, 0xFFFF is a standard initial for CRC-16-CCITT
 static constexpr uint16_t CRC16_INIT = 0xFFFF;
 
+//=========
+// crc16_ccitt: calculates the CRC-16-CCITT of a given data buffer
+// input(s): 
+// data: pointer to the first byte of data
+// len: size_t representing number of bytes we need to process
+// 
+// output(s): 
+// crc: unsigned 16 bit integer containing our calculated CRC value 
+//
 uint16_t crc16_ccitt(const uint8_t* data, size_t len){
 #ifdef ESP_PLATFORM
     // ROM version. The ROM function inverts the value on the way in and on
