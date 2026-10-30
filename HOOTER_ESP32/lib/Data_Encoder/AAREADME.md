@@ -13,3 +13,6 @@ one file pair
 
 **AA_block_diagram.pptx**: contains a conceptual block diagram laying out the
 design behind the downlink, from data acquisition to unpacking the data on land
+
+Testing
+pio test -e esp32dev -f test_crc --without-testing
