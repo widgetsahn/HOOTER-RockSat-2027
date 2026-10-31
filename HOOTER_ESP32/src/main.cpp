@@ -81,7 +81,7 @@ void neopixelTask(void *parameter)
                 increase = true;
             }
         }
-        Pixel1.setColor(0, 0, i);
+        Pixel1.setColor(21-i, 0, i);
     }
 }
 
