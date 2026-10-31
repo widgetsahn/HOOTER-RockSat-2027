@@ -5,6 +5,7 @@
 // Runs once per reset in one dedicated FreeRTOS task.
 // Live serial progress uses printf(); no Arduino Serial dependency.
 // Reports: /sdcard/SD_Card_tests/runNNNN/results.csv
+// Runtime: /sdcard/SD_Card_tests/runNNNN/runtime.txt
 // Existing runs are preserved. Only fixtures inside the new run are modified.
 // GPIO25: optional external LED, active HIGH. ON=all passed and report saved.
 // Unity serial output is authoritative for individual results.
@@ -125,6 +126,28 @@ namespace
                          static_cast<long long>(write_us), complete ? "COMPLETE" : "RUNNING") < 0)
             ok = false;
         if (std::fclose(f))
+            ok = false;
+        return ok;
+    }
+    bool saveRuntime(int64_t elapsed_us, bool reportComplete)
+    {
+        std::FILE *f = std::fopen(raw(run + "/runtime.txt").c_str(), "wb");
+        if (!f)
+            return false;
+        bool ok = std::fprintf(
+            f,
+            "SD_Card test runtime\n"
+            "Elapsed microseconds: %lld\n"
+            "Elapsed seconds: %.6f\n"
+            "Results CSV saved: %s\n"
+            "Measured from test task entry through final CSV save attempt.\n"
+            "Includes setup, connection retries, checks, and live serial output.\n"
+            "Excludes this file's write, final disconnect, and Unity summary.\n",
+            static_cast<long long>(elapsed_us),
+            static_cast<double>(elapsed_us) / 1000000.0,
+            reportComplete ? "YES" : "NO") >= 0;
+        // fclose flushes buffered output; its failure also means saving failed.
+        if (std::fclose(f) != 0)
             ok = false;
         return ok;
     }
@@ -304,8 +327,13 @@ namespace
     {
         TEST_ASSERT_TRUE_MESSAGE(!overflow, "Result buffer overflow");
     }
+    void verifyRuntime()
+    {
+        TEST_ASSERT_TRUE_MESSAGE(false, "Could not finish saving runtime.txt");
+    }
     void sdTask(void *)
     {
+        const int64_t test_start_us = esp_timer_get_time();
         gpio_reset_pin(LED);
         gpio_set_direction(LED, GPIO_MODE_OUTPUT);
         gpio_set_level(LED, 0);
@@ -345,8 +373,11 @@ namespace
             if (reportConnected)
                 complete = saveReport(true);
         }
+        // Capture before writing the timing file, while the card is still mounted.
+        const int64_t elapsed_us = esp_timer_get_time() - test_start_us;
+        const bool runtimeSaved = prepared && saveRuntime(elapsed_us, complete);
         card.disconnect();
-        bool failed = overflow || !prepared || !complete;
+        bool failed = overflow || !prepared || !complete || !runtimeSaved;
         for (size_t i = 0; i < count; ++i)
             if (!results[i].pass)
                 failed = true;
@@ -356,6 +387,9 @@ namespace
                     passed, static_cast<unsigned>(count) - passed);
         std::printf("CSV report: %s; overall: %s\n",
                     complete ? "SAVED" : "NOT COMPLETED", failed ? "FAIL" : "PASS");
+        std::printf("Test runtime: %.6f seconds; runtime.txt: %s\n",
+                    static_cast<double>(elapsed_us) / 1000000.0,
+                    runtimeSaved ? "SAVED" : "NOT SAVED");
         std::fflush(stdout);
         // Steady HIGH indicates the report completed and all recorded tests passed.
         gpio_set_level(LED, complete && !failed ? 1 : 0);
@@ -369,6 +403,8 @@ namespace
         RUN_TEST(verifyOverflow);
         if (prepared && !complete)
             RUN_TEST(verifyReport);
+        if (prepared && !runtimeSaved)
+            RUN_TEST(verifyRuntime);
         UNITY_END();
         std::fflush(stdout);
         vTaskDelete(nullptr);

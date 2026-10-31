@@ -22,7 +22,7 @@ Also shoutout chatGPT for teaching me about freeRTOS and how to set up this exam
 // first, lets write a function for blinking an LED
 constexpr gpio_num_t LED_PIN = GPIO_NUM_4;       // this is a const that lets us quickly redefine the LED blinking pin
 constexpr gpio_num_t NEO_PIXEL_PIN = GPIO_NUM_5; // this is an neopixel reserved pin on the DEV board
-constexpr uint8_t MAX_BRIGHTNESS = 40;           // max is 255
+constexpr uint8_t MAX_BRIGHTNESS = 254;           // max is 254
 // now lets set up our freeRTOS tasks
 void blinkTask(void *parameter)
 {
@@ -67,7 +67,7 @@ void neopixelTask(void *parameter)
     int shift = 0;
     while (true)
     {
-        vTaskDelay(pdMS_TO_TICKS(140));
+        vTaskDelay(pdMS_TO_TICKS(20));
         if (shift == 0)
         {
             red++;

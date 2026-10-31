@@ -52,6 +52,7 @@ public:
     bool checkCommunication(); // sends a fresh status command to the card. returns true if status is OK
 
 private:
+
     bool _ready = false; // a status bit that confirms permission to proceed with SD card operations
 
     sdmmc_card_t *_card = nullptr; // card information for esp_vfs_fat_sdmmc_mount()
@@ -85,6 +86,8 @@ private:
     static constexpr gpio_num_t D1_PIN = GPIO_NUM_4;
     static constexpr gpio_num_t D2_PIN = GPIO_NUM_12;
     static constexpr gpio_num_t D3_PIN = GPIO_NUM_13;
+
+    static constexpr bool ENABLE_INTERNAL_PULLUPS = true;
 };
 
 #endif // SD_CARD_H

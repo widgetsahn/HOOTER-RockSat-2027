@@ -46,6 +46,13 @@ bool SD_Card::connect()
     // set the bus width of the slot use either 1 or 4 depending on .h implementation
     slot.width = BUS_WIDTH;
 
+    //if we are using internal pullups, rather than externally wired ones
+    //we need to manage that
+    if (ENABLE_INTERNAL_PULLUPS)
+    {
+        slot.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+    }
+
     // set the mount configuration with FAT filesystem
     esp_vfs_fat_mount_config_t mount_config = {};
     mount_config.format_if_mount_failed = false; // we need to make sure if the mount failed we don't wipe our data lol
