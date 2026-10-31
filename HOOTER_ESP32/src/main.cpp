@@ -60,28 +60,42 @@ void neopixelTask(void *parameter)
 {
     NeoPixel Pixel1(NEO_PIXEL_PIN); // create a class instance of the neopixel pin
     Pixel1.begin();
-    uint8_t i = 0;
-    bool increase = true;
+    uint8_t red = 0;
+    uint8_t blue = 0;
+    uint8_t green = 21;
+    int shift = 0;
     while (true)
     {
-        vTaskDelay(pdMS_TO_TICKS(60));
-        if (increase)
+        vTaskDelay(pdMS_TO_TICKS(140));
+        if (shift == 0)
         {
-            i++;
-            if (i > 20)
+            red++;
+            green--;
+            if (red > 20)
             {
-                increase = false;
+                shift = 1;
+            }
+        }
+        else if (shift == 1)
+        {
+            red--;
+            blue++;
+            if (blue > 20)
+            {
+                shift = 2;
             }
         }
         else
         {
-            i--;
-            if (i < 1)
+            blue--;
+            green++;
+            if (green > 20)
             {
-                increase = true;
+                shift = 0;
             }
         }
-        Pixel1.setColor(21-i, 0, i);
+
+        Pixel1.setColor(red, green, blue);
     }
 }
 
