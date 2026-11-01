@@ -26,7 +26,6 @@
 
 namespace
 {
-    constexpr gpio_num_t LED = GPIO_NUM_25;
     constexpr const char *ROOT = "/sdcard";
     SD_Card card; // Accessed only by the SD test task.
     struct Result
@@ -334,9 +333,6 @@ namespace
     void sdTask(void *)
     {
         const int64_t test_start_us = esp_timer_get_time();
-        gpio_reset_pin(LED);
-        gpio_set_direction(LED, GPIO_MODE_OUTPUT);
-        gpio_set_level(LED, 0);
         UNITY_BEGIN();
         std::printf("\n=== SD card tests starting ===\n");
         std::printf("Connecting to SD card...\n");
@@ -392,7 +388,6 @@ namespace
                     runtimeSaved ? "SAVED" : "NOT SAVED");
         std::fflush(stdout);
         // Steady HIGH indicates the report completed and all recorded tests passed.
-        gpio_set_level(LED, complete && !failed ? 1 : 0);
         if (!prepared)
             RUN_TEST(verifySetup);
         for (current_result = 0; current_result < count; ++current_result)

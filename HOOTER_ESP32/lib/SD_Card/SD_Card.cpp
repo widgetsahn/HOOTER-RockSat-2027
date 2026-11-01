@@ -38,7 +38,7 @@ bool SD_Card::connect()
 
     // set the host to slot 1 and set the operating clock to 20MHz
     host.slot = SDMMC_SLOT;
-    host.max_freq_khz = SDMMC_FREQ_DEFAULT; // 20,000kHz (20MHz)
+    host.max_freq_khz = 5000; // SDMMC_FREQ_DEFAULT = 20,000kHz (20MHz)
 
     // configure the MMC host using the default hardware pin assignments
     sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
