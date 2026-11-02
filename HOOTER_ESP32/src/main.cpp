@@ -51,6 +51,7 @@ void helloTask(void *parameter)
         printf("Simmmmmmm t\n");
         printf("Mason From another PC!\n");
         printf("I want to drink a lot of beer right now!\n");
+        printf("sal from another pc too!! \n(bitch and a half to set up)\n");
         // here is a neat trick to see how much RAM was used
         printf("Minimum unused stack for helloTask: %u bytes\n", (unsigned)uxTaskGetStackHighWaterMark(nullptr));
         vTaskDelay(pdMS_TO_TICKS(1000));
