@@ -19,10 +19,23 @@ we can set those at the highest priority. I think you may get the gist.
 Also shoutout chatGPT for teaching me about freeRTOS and how to set up this example
 */
 
+//
+
 // first, lets write a function for blinking an LED
 constexpr gpio_num_t LED_PIN = GPIO_NUM_4;       // this is a const that lets us quickly redefine the LED blinking pin
 constexpr gpio_num_t NEO_PIXEL_PIN = GPIO_NUM_5; // this is an neopixel reserved pin on the DEV board
 constexpr uint8_t MAX_BRIGHTNESS = 20;           // max is 254
+
+
+//lets make some macros for appending print colors
+#define RED     "\033[91m"
+#define GREEN   "\033[92m"
+#define YELLOW  "\033[93m"
+#define BLUE    "\033[34m"
+#define RESET   "\033[0m"
+
+
+
 // now lets set up our freeRTOS tasks
 void blinkTask(void *parameter)
 {
@@ -49,7 +62,7 @@ void helloTask(void *parameter)
         printf("Hello, world! RockSat2027 Rules!\n");
         printf("Salvatore t\n");
         printf("Simmmmmmm t\n");
-        printf("Mason From another PC!\n");
+        printf(RED "Mason From another PC!\n" RESET);
         printf("I want to drink a lot of beer right now!\n");
         printf("sal from another pc too!! \n(poop and a half to set up)\n");
         printf("Laura was here :)\n");
