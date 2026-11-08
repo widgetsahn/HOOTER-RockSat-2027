@@ -1,4 +1,4 @@
-// FILE: \Data_Encoder\common_methods\crc\crc.cc
+// FILE: \Data_Encoder\common_methods\crc\crc.cpp
 
 #include "crc.h"
 
