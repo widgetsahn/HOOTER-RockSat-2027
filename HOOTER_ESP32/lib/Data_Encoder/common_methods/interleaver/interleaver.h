@@ -7,7 +7,6 @@
 #define INTERLEAVER_H
 
 #include "stdint.h" // we need fixed width integer types
-#include "stddef.h" // we need size_t
 
 /* below are functions that we will use to "interleave" and "deinterleave". 
 Interleaving is a commonly used method to weave together data, and we're
