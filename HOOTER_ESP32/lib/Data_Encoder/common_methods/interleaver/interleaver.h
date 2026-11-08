@@ -9,11 +9,33 @@
 #include "stdint.h" // we need fixed width integer types
 #include "stddef.h" // we need size_t
 
-// function that we will use to calculate CRC-16-CCITT, an error detection 
-// algorithm standardized by CCITT and is a CCSDS standard. It essentially 
-// treats the data as a polynomial and divides it by a generator polynomial,
-// with it being a 16-bit polynomial with a value of 0x1021.,  if the
-//recalculated CRC does not match the received CRC, the data is corrupted
+/* below are functions that we will use to "interleave" and "deinterleave". 
+Interleaving is a commonly used method to weave together data, and we're
+ doing it here for the sake of reducing the chance of there being a big
+ chunk of data that is lost due to a single bit error. Because we're planning
+ on transmitting approximately 1020 bytes of data at a time between 4 blocks
+ of data, the whole idea is to weave this data together so that if a single 
+ bit error occurs, it will only affect a small portion of each block, rather
+ than a large portion of one block. 
+
+ for Example: 
+ if we have 4 blocks (A-D) of data, each with 255 bytes, without
+ interleaving, this is how it will be sent: 
+
+ A0, A1, A2 ... A254, B0, B1, B2 ... etc. 
+
+ This is problematic, because if we have a dropout that causes, say a 10 byte
+ chunk of data to disappear, we will lose a large portion of a singular block,
+ which is bad for Reed-Solomon error correction.
+
+ However, if we interleave the data, it will be sent like this:
+ A0, B0, C0, D0, A1, B1, C1, D1 ... etc.
+
+ By doing this with our data, if we use that same dropout example from up
+ above, we will only lose a small portion of every block, which is much better
+ for Reed-Solomon error correction.
+
+*/
 // ==============================
 // to be used by the ESP32
 //
